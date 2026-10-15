@@ -163,95 +163,148 @@ export default function App() {
     return dbState.accounts.find((a) => a.id === selectedCompanyId) || null;
   }, [selectedCompanyId, dbState.accounts]);
 
+  // Selected Company's Invoices and Payments (Sorted Chronologically: Oldest to Newest)
   const selectedInvoices = useMemo(() => {
     if (!selectedCompanyId) return [];
     return dbState.invoices
       .filter((i) => i.companyId === selectedCompanyId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.createdAt.localeCompare(b.createdAt));
   }, [selectedCompanyId, dbState.invoices]);
 
   const selectedPayments = useMemo(() => {
     if (!selectedCompanyId) return [];
     return dbState.payments
       .filter((p) => p.companyId === selectedCompanyId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.createdAt.localeCompare(b.createdAt));
   }, [selectedCompanyId, dbState.payments]);
 
   // Invoice Handlers
   const handleAddInvoice = (newInvData: Omit<Invoice, 'id' | 'createdAt'>) => {
     const newInvoice: Invoice = {
       ...newInvData,
-      id: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `inv-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       createdAt: new Date().toISOString()
     };
-    const updatedInvoices = [newInvoice, ...dbState.invoices];
-    const newState: DatabaseState = {
-      ...dbState,
-      invoices: updatedInvoices
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, `Yeni Fatura Eklendi (${newInvoice.invoiceNo})`);
+    setDbState((prevState) => {
+      const updatedInvoices = [newInvoice, ...prevState.invoices];
+      const newState: DatabaseState = {
+        ...prevState,
+        invoices: updatedInvoices
+      };
+      saveDatabaseState(newState, `Yeni Fatura Eklendi (${newInvoice.invoiceNo})`);
+      return newState;
+    });
+  };
+
+  // Batch Invoice Addition (for Excel bulk import)
+  const handleAddInvoices = (newInvoicesData: Array<Omit<Invoice, 'id' | 'createdAt'>>) => {
+    if (newInvoicesData.length === 0) return;
+    const now = Date.now();
+    const newInvoices: Invoice[] = newInvoicesData.map((data, index) => ({
+      ...data,
+      id: `inv-${now}-${index}-${Math.floor(Math.random() * 10000)}`,
+      createdAt: new Date(now + index).toISOString()
+    }));
+
+    setDbState((prevState) => {
+      const newState: DatabaseState = {
+        ...prevState,
+        invoices: [...newInvoices, ...prevState.invoices]
+      };
+      saveDatabaseState(newState, `${newInvoices.length} Adet Fatura Topluca Eklendi`);
+      return newState;
+    });
   };
 
   const handleDeleteInvoice = (invoiceId: string) => {
-    const invToDelete = dbState.invoices.find((i) => i.id === invoiceId);
-    const updatedInvoices = dbState.invoices.filter((i) => i.id !== invoiceId);
-    const newState: DatabaseState = {
-      ...dbState,
-      invoices: updatedInvoices
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, `Fatura Silindi (${invToDelete?.invoiceNo || invoiceId})`);
+    setDbState((prevState) => {
+      const invToDelete = prevState.invoices.find((i) => i.id === invoiceId);
+      const updatedInvoices = prevState.invoices.filter((i) => i.id !== invoiceId);
+      const newState: DatabaseState = {
+        ...prevState,
+        invoices: updatedInvoices
+      };
+      saveDatabaseState(newState, `Fatura Silindi (${invToDelete?.invoiceNo || invoiceId})`);
+      return newState;
+    });
   };
 
   const handleUpdateInvoice = (updatedInvoice: Invoice) => {
-    const updatedInvoices = dbState.invoices.map((inv) =>
-      inv.id === updatedInvoice.id ? updatedInvoice : inv
-    );
-    const newState: DatabaseState = {
-      ...dbState,
-      invoices: updatedInvoices
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, `Fatura Güncellendi (${updatedInvoice.invoiceNo})`);
+    setDbState((prevState) => {
+      const updatedInvoices = prevState.invoices.map((inv) =>
+        inv.id === updatedInvoice.id ? updatedInvoice : inv
+      );
+      const newState: DatabaseState = {
+        ...prevState,
+        invoices: updatedInvoices
+      };
+      saveDatabaseState(newState, `Fatura Güncellendi (${updatedInvoice.invoiceNo})`);
+      return newState;
+    });
   };
 
   // Payment Handlers
   const handleAddPayment = (newPayData: Omit<Payment, 'id' | 'createdAt'>) => {
     const newPayment: Payment = {
       ...newPayData,
-      id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       createdAt: new Date().toISOString()
     };
-    const updatedPayments = [newPayment, ...dbState.payments];
-    const newState: DatabaseState = {
-      ...dbState,
-      payments: updatedPayments
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, `Yeni Ödeme Kaydedildi (${newPayment.amount} ${dbState.settings?.currency || '₺'})`);
+    setDbState((prevState) => {
+      const updatedPayments = [newPayment, ...prevState.payments];
+      const newState: DatabaseState = {
+        ...prevState,
+        payments: updatedPayments
+      };
+      saveDatabaseState(newState, `Yeni Ödeme Kaydedildi (${newPayment.amount} ${prevState.settings?.currency || '₺'})`);
+      return newState;
+    });
+  };
+
+  // Batch Payment Addition (for Excel bulk import)
+  const handleAddPayments = (newPaymentsData: Array<Omit<Payment, 'id' | 'createdAt'>>) => {
+    if (newPaymentsData.length === 0) return;
+    const now = Date.now();
+    const newPayments: Payment[] = newPaymentsData.map((data, index) => ({
+      ...data,
+      id: `pay-${now}-${index}-${Math.floor(Math.random() * 10000)}`,
+      createdAt: new Date(now + index).toISOString()
+    }));
+
+    setDbState((prevState) => {
+      const newState: DatabaseState = {
+        ...prevState,
+        payments: [...newPayments, ...prevState.payments]
+      };
+      saveDatabaseState(newState, `${newPayments.length} Adet Ödeme Topluca Eklendi`);
+      return newState;
+    });
   };
 
   const handleDeletePayment = (paymentId: string) => {
-    const updatedPayments = dbState.payments.filter((p) => p.id !== paymentId);
-    const newState: DatabaseState = {
-      ...dbState,
-      payments: updatedPayments
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, 'Ödeme Kaydı Silindi');
+    setDbState((prevState) => {
+      const updatedPayments = prevState.payments.filter((p) => p.id !== paymentId);
+      const newState: DatabaseState = {
+        ...prevState,
+        payments: updatedPayments
+      };
+      saveDatabaseState(newState, 'Ödeme Kaydı Silindi');
+      return newState;
+    });
   };
 
   const handleUpdatePayment = (updatedPayment: Payment) => {
-    const updatedPayments = dbState.payments.map((p) =>
-      p.id === updatedPayment.id ? updatedPayment : p
-    );
-    const newState: DatabaseState = {
-      ...dbState,
-      payments: updatedPayments
-    };
-    setDbState(newState);
-    saveDatabaseState(newState, `Ödeme Kaydı Güncellendi (${updatedPayment.amount})`);
+    setDbState((prevState) => {
+      const updatedPayments = prevState.payments.map((p) =>
+        p.id === updatedPayment.id ? updatedPayment : p
+      );
+      const newState: DatabaseState = {
+        ...prevState,
+        payments: updatedPayments
+      };
+      saveDatabaseState(newState, `Ödeme Kaydı Güncellendi (${updatedPayment.amount})`);
+      return newState;
+    });
   };
 
   // Company Handlers
@@ -431,9 +484,11 @@ export default function App() {
           settings={dbState.settings}
           onBack={() => setSelectedCompanyId(null)}
           onAddInvoice={handleAddInvoice}
+          onAddInvoices={handleAddInvoices}
           onDeleteInvoice={handleDeleteInvoice}
           onUpdateInvoice={handleUpdateInvoice}
           onAddPayment={handleAddPayment}
+          onAddPayments={handleAddPayments}
           onDeletePayment={handleDeletePayment}
           onUpdatePayment={handleUpdatePayment}
           onEditCompany={(comp) =>

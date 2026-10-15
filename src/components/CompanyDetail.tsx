@@ -5,6 +5,8 @@ import { ConfirmModal } from './ConfirmModal';
 import { SmartDateInput } from './SmartDateInput';
 import { PrintStatementModal } from './PrintStatementModal';
 import { CustomColumnsModal } from './CustomColumnsModal';
+import { OpeningBalanceModal } from './OpeningBalanceModal';
+import { BulkImportModal } from './BulkImportModal';
 import {
   ColumnOrderModal,
   DEFAULT_INVOICE_ORDER,
@@ -32,7 +34,9 @@ import {
   ArrowUpCircle,
   SlidersHorizontal,
   ArrowLeftRight,
-  GripVertical
+  GripVertical,
+  History,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface CompanyDetailProps {
@@ -42,9 +46,11 @@ interface CompanyDetailProps {
   settings: AppSettings;
   onBack: () => void;
   onAddInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => void;
+  onAddInvoices?: (invoices: Array<Omit<Invoice, 'id' | 'createdAt'>>) => void;
   onDeleteInvoice: (invoiceId: string) => void;
   onUpdateInvoice: (invoice: Invoice) => void;
   onAddPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => void;
+  onAddPayments?: (payments: Array<Omit<Payment, 'id' | 'createdAt'>>) => void;
   onDeletePayment: (paymentId: string) => void;
   onUpdatePayment: (payment: Payment) => void;
   onEditCompany: (company: CompanyAccount) => void;
@@ -58,9 +64,11 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   settings,
   onBack,
   onAddInvoice,
+  onAddInvoices,
   onDeleteInvoice,
   onUpdateInvoice,
   onAddPayment,
+  onAddPayments,
   onDeletePayment,
   onUpdatePayment,
   onEditCompany,
@@ -150,6 +158,11 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   const [isColumnOrderModalOpen, setIsColumnOrderModalOpen] = useState(false);
   const [orderModalTab, setOrderModalTab] = useState<'invoice' | 'payment'>('invoice');
 
+  // Modals for Opening Balance & Bulk Import (Past Transactions)
+  const [isOpeningBalanceModalOpen, setIsOpeningBalanceModalOpen] = useState(false);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
+  const [bulkImportInitialType, setBulkImportInitialType] = useState<'invoice' | 'payment'>('invoice');
+
   // Excel Input Row Position state (bottom = standard Excel append; top = pinned right below header)
   const [invRowPos, setInvRowPos] = useState<'bottom' | 'top'>('bottom');
   const [payRowPos, setPayRowPos] = useState<'bottom' | 'top'>('bottom');
@@ -204,6 +217,9 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
     isOpen: boolean;
     title: string;
     message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    isDanger?: boolean;
     action: () => void;
   }>({
     isOpen: false,
@@ -503,10 +519,10 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   const submitInvoice = () => {
     setFormError(null);
     const amountVal = parseFloat(invAmount.replace(',', '.'));
-    // 0 tutar girilebilir (amountVal >= 0), negatif tutar engellenir
-    if (!invNo.trim() || isNaN(amountVal) || amountVal < 0) {
-      setFormError('Lütfen geçerli bir Fatura Numarası ve Tutar (0 veya üzeri) giriniz.');
-      if (isNaN(amountVal) || amountVal < 0) {
+    // Eksi ve artı değerli tutarlar ile 0 tutar geçerlidir
+    if (!invNo.trim() || isNaN(amountVal)) {
+      setFormError('Lütfen geçerli bir Fatura Numarası ve Tutar giriniz.');
+      if (isNaN(amountVal)) {
         invAmountInputRef.current?.focus();
       } else {
         invNoInputRef.current?.focus();
@@ -548,9 +564,9 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   const submitPayment = () => {
     setFormError(null);
     const amountVal = parseFloat(payAmount.replace(',', '.'));
-    // 0 tutar girilebilir (amountVal >= 0), negatif tutar engellenir
-    if (isNaN(amountVal) || amountVal < 0) {
-      setFormError('Lütfen geçerli bir Ödeme Tutarı (0 veya üzeri) giriniz.');
+    // Eksi ve artı değerli tutarlar ile 0 tutar geçerlidir
+    if (isNaN(amountVal)) {
+      setFormError('Lütfen geçerli bir Ödeme Tutarı giriniz.');
       payAmountInputRef.current?.focus();
       return false;
     }
@@ -734,14 +750,13 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
                   ref={invAmountInputRef}
                   type="number"
                   step="any"
-                  min="0"
                   required
                   placeholder="0,00"
                   value={invAmount}
                   onChange={(e) => setInvAmount(e.target.value)}
                   onKeyDown={(e) => handleInvoiceCellKeyDown(e, 'amount')}
                   className="w-full bg-slate-900 border border-slate-700/90 rounded px-2 py-1 text-xs font-mono font-black text-rose-300 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-right"
-                  title="Tutar (0 girilebilir. Ctrl+D ile üst satırdan al, Enter ile faturayı ekle)"
+                  title="Tutar (Eksi değer, artı değer veya 0 girilebilir. Ctrl+D ile üstten al, Enter ile ekle)"
                 />
               </td>
             );
@@ -897,14 +912,13 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
                   ref={payAmountInputRef}
                   type="number"
                   step="any"
-                  min="0"
                   required
                   placeholder="0,00"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   onKeyDown={(e) => handlePaymentCellKeyDown(e, 'amount')}
                   className="w-full bg-slate-900 border border-slate-700/90 rounded px-2 py-1 text-xs font-mono font-black text-emerald-300 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-right"
-                  title="Ödeme Miktarı (0 girilebilir. Ctrl+D ile üstten al, Enter ile kaydet)"
+                  title="Ödeme Miktarı (Eksi değer, artı değer veya 0 girilebilir. Ctrl+D ile üstten al, Enter ile ekle)"
                 />
               </td>
             );
@@ -1074,6 +1088,29 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Devir / Açılış Bakiyesi Butonu */}
+            <button
+              onClick={() => setIsOpeningBalanceModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-600/60 bg-amber-950/40 hover:bg-amber-900/60 text-amber-200 text-xs font-semibold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              title="Geçmiş dönem devir / açılış bakiyesi ekle"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span>Devir Bakiyesi</span>
+            </button>
+
+            {/* Excel'den Toplu Yükle Butonu */}
+            <button
+              onClick={() => {
+                setBulkImportInitialType('invoice');
+                setIsBulkImportModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-600/60 bg-sky-950/40 hover:bg-sky-900/60 text-sky-200 text-xs font-semibold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              title="Excel veya metin tablosundan kopyalanan satırları topluca yapıştırıp aktar"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-400" />
+              <span>Toplu Yükle (Excel)</span>
+            </button>
+
             {/* Column Order Button */}
             <button
               onClick={() => {
@@ -1083,7 +1120,7 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
               title="Sütunların yerlerini değiştir (Tarih, Tutar, Fatura No, Açıklama vb.)"
             >
-              <ArrowLeftRight className="w-4 h-4 text-sky-400" />
+              <ArrowLeftRight className="w-3.5 h-3.5 text-sky-400" />
               <span>Sütun Sıralaması</span>
             </button>
 
@@ -1093,25 +1130,25 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-800/80 bg-sky-950/40 hover:bg-sky-900/60 text-sky-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
               title="Bu şirkete özel tablo sütunları ekle veya düzenle"
             >
-              <Columns className="w-4 h-4 text-sky-400" />
+              <Columns className="w-3.5 h-3.5 text-sky-400" />
               <span>Özel Sütunlar ({(company.customColumns || []).length})</span>
             </button>
 
             {/* Print Official Statement Button */}
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
               title="A4 Cari Hesap Ekstresi Yazdır & Excel"
             >
-              <Printer className="w-4 h-4 text-slate-300" />
+              <Printer className="w-3.5 h-3.5 text-slate-300" />
               <span>Ekstre Yazdır</span>
             </button>
 
             <button
               onClick={() => onEditCompany(company)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-xs"
             >
-              <Edit2 className="w-4 h-4" />
+              <Edit2 className="w-3.5 h-3.5" />
               <span>Şirketi Düzenle</span>
             </button>
           </div>
@@ -1300,6 +1337,20 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               >
                 <Plus className="w-3 h-3 text-sky-400" />
                 <span>Özel Sütun ({invoiceColumns.length})</span>
+              </button>
+
+              {/* Excel'den Toplu Fatura Yükle Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkImportInitialType('invoice');
+                  setIsBulkImportModalOpen(true);
+                }}
+                className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 hover:border-rose-500 transition-colors cursor-pointer"
+                title="Excel'den kopyalanan geçmiş faturaları yapıştır"
+              >
+                <FileSpreadsheet className="w-3 h-3 text-rose-400" />
+                <span>Excel'den Toplu Fatura</span>
               </button>
 
               <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-rose-300 border border-slate-700 tabular-nums">
@@ -1619,7 +1670,13 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
                               isOpen: true,
                               title: 'Faturayı Sil',
                               message: `${inv.invoiceNo} numaralı ${formatCurrencyTRY(inv.amount, currency)} tutarındaki faturayı silmek istediğinize emin misiniz?`,
-                              action: () => onDeleteInvoice(inv.id)
+                              confirmLabel: 'Evet, Sil',
+                              isDanger: true,
+                              action: () => {
+                                onDeleteInvoice(inv.id);
+                                setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+                                showFeedback(`✓ ${inv.invoiceNo} numaralı fatura silindi`, 'info');
+                              }
                             });
                           }}
                           className="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-950/60 transition-colors cursor-pointer"
@@ -1739,6 +1796,20 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               >
                 <Plus className="w-3 h-3 text-emerald-400" />
                 <span>Özel Sütun ({paymentColumns.length})</span>
+              </button>
+
+              {/* Excel'den Toplu Ödeme Yükle Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkImportInitialType('payment');
+                  setIsBulkImportModalOpen(true);
+                }}
+                className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/60 hover:border-emerald-500 transition-colors cursor-pointer"
+                title="Excel'den kopyalanan geçmiş ödemeleri yapıştır"
+              >
+                <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                <span>Excel'den Toplu Ödeme</span>
               </button>
 
               <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700 tabular-nums">
@@ -2060,7 +2131,13 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
                               isOpen: true,
                               title: 'Ödeme Kaydını Sil',
                               message: `${pay.paymentMethod} türündeki ${formatCurrencyTRY(pay.amount, currency)} tutarlı ödeme kaydını silmek istediğinize emin misiniz?`,
-                              action: () => onDeletePayment(pay.id)
+                              confirmLabel: 'Evet, Sil',
+                              isDanger: true,
+                              action: () => {
+                                onDeletePayment(pay.id);
+                                setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+                                showFeedback(`✓ Ödeme kaydı silindi`, 'info');
+                              }
                             });
                           }}
                           className="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-950/60 transition-colors cursor-pointer"
@@ -2145,11 +2222,10 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Tutar ({currency}) (0 girilebilir)</label>
+                <label className="block text-slate-400 mb-1">Tutar ({currency}) (Eksi değer veya 0 girilebilir)</label>
                 <input
                   type="number"
                   step="any"
-                  min="0"
                   required
                   value={editingInvoice.amount}
                   onChange={(e) =>
@@ -2310,11 +2386,10 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Miktar ({currency}) (0 girilebilir)</label>
+                <label className="block text-slate-400 mb-1">Miktar ({currency}) (Eksi değer veya 0 girilebilir)</label>
                 <input
                   type="number"
                   step="any"
-                  min="0"
                   required
                   value={editingPayment.amount}
                   onChange={(e) =>
@@ -2473,7 +2548,13 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
         isOpen={confirmModalState.isOpen}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        onConfirm={confirmModalState.action}
+        confirmLabel={confirmModalState.confirmLabel || 'Evet, Sil'}
+        cancelLabel={confirmModalState.cancelLabel || 'İptal'}
+        isDanger={confirmModalState.isDanger !== false}
+        onConfirm={() => {
+          confirmModalState.action();
+          setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+        }}
         onCancel={() => setConfirmModalState((prev) => ({ ...prev, isOpen: false }))}
       />
 
@@ -2485,6 +2566,32 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
         invoices={invoices}
         payments={payments}
         settings={settings}
+      />
+
+      {/* Opening / Devir Balance Modal */}
+      <OpeningBalanceModal
+        isOpen={isOpeningBalanceModalOpen}
+        onClose={() => setIsOpeningBalanceModalOpen(false)}
+        company={company}
+        currentBalance={balance}
+        settings={settings}
+        onAddInvoice={onAddInvoice}
+        onAddPayment={onAddPayment}
+        onSuccess={(msg) => showFeedback(msg, 'success')}
+      />
+
+      {/* Bulk Paste & Import Modal */}
+      <BulkImportModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+        company={company}
+        settings={settings}
+        initialType={bulkImportInitialType}
+        onAddInvoice={onAddInvoice}
+        onAddInvoices={onAddInvoices}
+        onAddPayment={onAddPayment}
+        onAddPayments={onAddPayments}
+        onSuccess={(msg) => showFeedback(msg, 'success')}
       />
     </div>
   );
