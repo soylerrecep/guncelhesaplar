@@ -1,0 +1,6 @@
+{
+  "name": "Güncel Cari Hesaplar Yönetimi",
+  "description": "Windows uyumlu, SQL veritabanı destekli, gelen faturalar ve yapılan ödemeler takibi, otomatik bakiye hesaplama ve yedekleme sistemli cari hesap programı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

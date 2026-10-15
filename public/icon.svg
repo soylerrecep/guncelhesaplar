@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1120" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="40%" stop-color="#cbd5e1" />
+      <stop offset="70%" stop-color="#94a3b8" />
+      <stop offset="100%" stop-color="#64748b" />
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="url(#shieldGrad)" stroke="#38bdf8" stroke-width="4" stroke-opacity="0.5" />
+
+  <!-- Neon Rim Accents -->
+  <rect x="36" y="36" width="440" height="440" rx="84" fill="none" stroke="#06b6d4" stroke-width="2" stroke-opacity="0.3" />
+
+  <!-- Ledger Book (Left) -->
+  <g transform="translate(100, 110)">
+    <!-- Book Back Pages -->
+    <path d="M10 210 C 45 195, 75 195, 115 205 L 115 45 C 75 35, 45 35, 10 50 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="3" />
+    <path d="M115 205 C 155 195, 185 195, 220 210 L 220 50 C 185 35, 155 35, 115 45 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="3" />
+    
+    <!-- Ledger Spine & Lines -->
+    <line x1="115" y1="45" x2="115" y2="205" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" />
+    
+    <line x1="30" y1="85" x2="95" y2="80" stroke="#64748b" stroke-width="4" stroke-linecap="round" />
+    <line x1="30" y1="115" x2="95" y2="110" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+    <line x1="30" y1="145" x2="80" y2="140" stroke="#64748b" stroke-width="4" stroke-linecap="round" />
+    <line x1="30" y1="175" x2="95" y2="170" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+
+    <line x1="135" y1="80" x2="200" y2="85" stroke="#64748b" stroke-width="4" stroke-linecap="round" />
+    <line x1="135" y1="110" x2="190" y2="115" stroke="#64748b" stroke-width="4" stroke-linecap="round" />
+    <line x1="135" y1="140" x2="200" y2="145" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+    <line x1="135" y1="170" x2="185" y2="175" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Turkish Lira Symbol (Center Glowing Metallic) -->
+  <g filter="url(#neonGlow)">
+    <!-- Vertical Bar with Curved Bottom -->
+    <path d="M 235 150 L 235 320 C 235 345, 255 365, 285 365 C 315 365, 335 345, 335 325" fill="none" stroke="url(#metalGrad)" stroke-width="26" stroke-linecap="round" />
+    <!-- Upper Diagonal Crossbar -->
+    <line x1="195" y1="210" x2="305" y2="175" stroke="url(#metalGrad)" stroke-width="24" stroke-linecap="round" />
+    <!-- Lower Diagonal Crossbar -->
+    <line x1="195" y1="260" x2="295" y2="230" stroke="url(#metalGrad)" stroke-width="24" stroke-linecap="round" />
+  </g>
+
+  <!-- Scales of Balance / Harmony (Right Side) -->
+  <g transform="translate(305, 130)" stroke="#10b981" stroke-linecap="round" opacity="0.9">
+    <line x1="50" y1="20" x2="50" y2="130" stroke-width="4" />
+    <circle cx="50" cy="20" r="6" fill="#10b981" />
+    <line x1="15" y1="40" x2="85" y2="40" stroke-width="4" />
+    <path d="M 15 40 L 5 80 L 25 80 Z" fill="none" stroke-width="3" />
+    <path d="M 85 40 L 75 80 L 95 80 Z" fill="none" stroke-width="3" />
+    <line x1="30" y1="130" x2="70" y2="130" stroke-width="5" />
+  </g>
+
+  <!-- Brand Typography -->
+  <text x="256" y="440" font-family="'Segoe UI', 'Plus Jakarta Sans', sans-serif" font-size="34" font-weight="900" fill="#f8fafc" text-anchor="middle" letter-spacing="4">
+    CARİ<tspan fill="#38bdf8"> HESAP</tspan>
+  </text>
+</svg>
